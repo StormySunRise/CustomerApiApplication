@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### JMeter ###
+performance/*.jtl
+performance/report/
+performance/*.log
+**/jmeter.log
