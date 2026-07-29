@@ -52,4 +52,15 @@ public class InMemoryCustomerRepository implements CustomerRepositoryPort {
                 .sorted(Comparator.comparingLong(Customer::id))
                 .toList();
     }
+
+    public void clear() {
+        lock.lock();
+        try {
+            customersById.clear();
+            emailIndex.clear();
+            idGenerator.set(1);
+        } finally {
+            lock.unlock();
+        }
+    }
 }
