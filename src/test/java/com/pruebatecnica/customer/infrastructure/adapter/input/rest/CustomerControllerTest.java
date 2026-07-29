@@ -5,9 +5,11 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.pruebatecnica.customer.application.exception.CustomerNotFoundException;
 import com.pruebatecnica.customer.application.port.input.CreateCustomerUseCase;
 import com.pruebatecnica.customer.application.port.input.GetCustomerUseCase;
 import com.pruebatecnica.customer.application.port.input.ListCustomersUseCase;
+import com.pruebatecnica.customer.domain.exception.DuplicateEmailException;
 import com.pruebatecnica.customer.domain.model.Customer;
 import com.pruebatecnica.customer.infrastructure.adapter.input.rest.dto.CreateCustomerRequest;
 import com.pruebatecnica.customer.infrastructure.adapter.input.rest.mapper.CustomerMapper;
@@ -79,33 +81,43 @@ class CustomerControllerTest {
     }
 
     @Test
-    void create_emptyName_returns400() throws Exception {
+    void create_emptyName_returns400WithValidationErrors() throws Exception {
         var request = new CreateCustomerRequest("", "juan@email.com");
 
         mockMvc.perform(post("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.validationErrors").isArray())
+                .andExpect(jsonPath("$.validationErrors[0].field").value("name"));
     }
 
     @Test
-    void create_emptyEmail_returns400() throws Exception {
+    void create_emptyEmail_returns400WithValidationErrors() throws Exception {
         var request = new CreateCustomerRequest("Juan", "");
 
         mockMvc.perform(post("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors").isArray())
+                .andExpect(jsonPath("$.validationErrors[0].field").value("email"));
     }
 
     @Test
-    void create_invalidEmail_returns400() throws Exception {
+    void create_invalidEmail_returns400WithValidationErrors() throws Exception {
         var request = new CreateCustomerRequest("Juan", "email-invalido");
 
         mockMvc.perform(post("/customers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors").isArray())
+                .andExpect(jsonPath("$.validationErrors[0].field").value("email"));
     }
 
     @Test
@@ -119,6 +131,35 @@ class CustomerControllerTest {
                         .content(objectMapper.writeValueAsString(request)));
 
         verify(createCustomerUseCase, times(1)).create(any());
+    }
+
+    @Test
+    void create_duplicateEmail_returns409() throws Exception {
+        var request = new CreateCustomerRequest("Juan", "juan@email.com");
+        when(createCustomerUseCase.create(any())).thenThrow(new DuplicateEmailException("juan@email.com"));
+
+        mockMvc.perform(post("/customers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.path").value("/customers"));
+    }
+
+    @Test
+    void create_genericError_returns500() throws Exception {
+        var request = new CreateCustomerRequest("Juan", "juan@email.com");
+        when(createCustomerUseCase.create(any())).thenThrow(new RuntimeException("Unexpected"));
+
+        mockMvc.perform(post("/customers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.error").value("Internal Server Error"))
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
+                .andExpect(jsonPath("$.validationErrors").doesNotExist());
     }
 
     @Test
@@ -142,9 +183,24 @@ class CustomerControllerTest {
     }
 
     @Test
-    void getById_invalidId_returns400() throws Exception {
+    void getById_nonExisting_returns404() throws Exception {
+        when(getCustomerUseCase.getById(99L)).thenThrow(new CustomerNotFoundException(99L));
+
+        mockMvc.perform(get("/customers/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Customer not found with id: 99"))
+                .andExpect(jsonPath("$.path").value("/customers/99"));
+    }
+
+    @Test
+    void getById_invalidId_returns400WithErrorStructure() throws Exception {
         mockMvc.perform(get("/customers/abc"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.path").value("/customers/abc"));
     }
 
     @Test
