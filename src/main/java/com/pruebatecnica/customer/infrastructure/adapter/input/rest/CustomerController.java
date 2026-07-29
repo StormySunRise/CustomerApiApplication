@@ -1,5 +1,6 @@
 package com.pruebatecnica.customer.infrastructure.adapter.input.rest;
 
+import com.pruebatecnica.customer.application.exception.CustomerNotFoundException;
 import com.pruebatecnica.customer.application.port.input.CreateCustomerUseCase;
 import com.pruebatecnica.customer.application.port.input.GetCustomerUseCase;
 import com.pruebatecnica.customer.application.port.input.ListCustomersUseCase;
@@ -44,9 +45,12 @@ public class CustomerController {
 
     @GetMapping("/{id}")
     public ResponseEntity<CustomerResponse> getById(@PathVariable Long id) {
-        return getCustomerUseCase.getById(id)
-                .map(customer -> ResponseEntity.ok(customerMapper.toResponse(customer)))
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            var customer = getCustomerUseCase.getById(id);
+            return ResponseEntity.ok(customerMapper.toResponse(customer));
+        } catch (CustomerNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping
