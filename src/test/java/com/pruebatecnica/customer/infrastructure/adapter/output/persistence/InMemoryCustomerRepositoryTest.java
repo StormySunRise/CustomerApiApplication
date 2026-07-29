@@ -97,96 +97,105 @@ class InMemoryCustomerRepositoryTest {
     void concurrent_differentEmails_generateUniqueIds() throws Exception {
         int threadCount = 10;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(1);
-        List<Future<Long>> futures = new ArrayList<>();
+        try {
+            CountDownLatch latch = new CountDownLatch(1);
+            List<Future<Long>> futures = new ArrayList<>();
 
-        for (int i = 0; i < threadCount; i++) {
-            int index = i;
-            futures.add(executor.submit(() -> {
-                latch.await();
-                Customer saved = repository.save(
-                        new Customer(null, "User" + index, "user" + index + "@email.com"));
-                return saved.id();
-            }));
+            for (int i = 0; i < threadCount; i++) {
+                int index = i;
+                futures.add(executor.submit(() -> {
+                    latch.await();
+                    Customer saved = repository.save(
+                            new Customer(null, "User" + index, "user" + index + "@email.com"));
+                    return saved.id();
+                }));
+            }
+
+            latch.countDown();
+            Set<Long> ids = new HashSet<>();
+            for (Future<Long> future : futures) {
+                ids.add(future.get(5, TimeUnit.SECONDS));
+            }
+
+            assertEquals(threadCount, ids.size());
+        } finally {
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
         }
-
-        latch.countDown();
-        Set<Long> ids = new HashSet<>();
-        for (Future<Long> future : futures) {
-            ids.add(future.get(5, TimeUnit.SECONDS));
-        }
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
-
-        assertEquals(threadCount, ids.size());
     }
 
     @Test
     void concurrent_sameEmail_onlyOneSucceeds() throws Exception {
         int threadCount = 10;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(1);
-        List<Future<Boolean>> futures = new ArrayList<>();
+        try {
+            CountDownLatch latch = new CountDownLatch(1);
+            List<Future<Boolean>> futures = new ArrayList<>();
 
-        for (int i = 0; i < threadCount; i++) {
-            futures.add(executor.submit(() -> {
-                latch.await();
-                try {
-                    repository.save(new Customer(null, "User", "same@email.com"));
-                    return true;
-                } catch (DuplicateEmailException e) {
-                    return false;
-                }
-            }));
-        }
-
-        latch.countDown();
-        int successCount = 0;
-        for (Future<Boolean> future : futures) {
-            if (future.get(5, TimeUnit.SECONDS)) {
-                successCount++;
+            for (int i = 0; i < threadCount; i++) {
+                futures.add(executor.submit(() -> {
+                    latch.await();
+                    try {
+                        repository.save(new Customer(null, "User", "same@email.com"));
+                        return true;
+                    } catch (DuplicateEmailException e) {
+                        return false;
+                    }
+                }));
             }
-        }
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
 
-        assertEquals(1, successCount);
+            latch.countDown();
+            int successCount = 0;
+            for (Future<Boolean> future : futures) {
+                if (future.get(5, TimeUnit.SECONDS)) {
+                    successCount++;
+                }
+            }
+
+            assertEquals(1, successCount);
+        } finally {
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        }
     }
 
     @Test
     void concurrent_consistencyMaintained() throws Exception {
         int threadCount = 10;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(1);
-        List<Future<Long>> futures = new ArrayList<>();
+        try {
+            CountDownLatch latch = new CountDownLatch(1);
+            List<Future<Long>> futures = new ArrayList<>();
 
-        for (int i = 0; i < threadCount; i++) {
-            int index = i;
-            futures.add(executor.submit(() -> {
-                latch.await();
-                Customer saved = repository.save(
-                        new Customer(null, "User" + index, "user" + index + "@test.com"));
-                return saved.id();
-            }));
-        }
+            for (int i = 0; i < threadCount; i++) {
+                int index = i;
+                futures.add(executor.submit(() -> {
+                    latch.await();
+                    Customer saved = repository.save(
+                            new Customer(null, "User" + index, "user" + index + "@test.com"));
+                    return saved.id();
+                }));
+            }
 
-        latch.countDown();
-        Set<Long> ids = new HashSet<>();
-        for (Future<Long> future : futures) {
-            ids.add(future.get(5, TimeUnit.SECONDS));
-        }
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+            latch.countDown();
+            Set<Long> ids = new HashSet<>();
+            for (Future<Long> future : futures) {
+                ids.add(future.get(5, TimeUnit.SECONDS));
+            }
 
-        assertEquals(threadCount, ids.size());
+            assertEquals(threadCount, ids.size());
 
-        List<Customer> all = repository.findAll();
-        assertEquals(threadCount, all.size());
+            List<Customer> all = repository.findAll();
+            assertEquals(threadCount, all.size());
 
-        for (Long id : ids) {
-            var found = repository.findById(id);
-            assertTrue(found.isPresent());
-            assertEquals(id, found.get().id());
+            for (Long id : ids) {
+                var found = repository.findById(id);
+                assertTrue(found.isPresent());
+                assertEquals(id, found.get().id());
+            }
+        } finally {
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
         }
     }
 }

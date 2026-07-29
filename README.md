@@ -30,6 +30,7 @@ Existen cinco suites de pruebas:
 | `CustomerServiceTest` | Unitario (Mockito) | 11 | Orquestación de casos de uso: delegación al repositorio, propagación de excepciones |
 | `CustomerControllerTest` | Slice (MockMvc) | 16 | Mapeo HTTP, validación, estructura JSON de error con casos de uso mockeados |
 | `CustomerApiIntegrationTest` | Integración | 11 | Stack real completo: controller → caso de uso → servicio → repositorio en memoria |
+| `CustomerApiApplicationTests` | Smoke | 1 | Carga del contexto Spring Boot |
 
 **Total: 62 pruebas**
 
@@ -208,8 +209,7 @@ Todos los errores siguen una estructura JSON consistente:
   "status": 404,
   "error": "Not Found",
   "message": "Customer not found with id: 99",
-  "path": "/customers/99",
-  "validationErrors": null
+  "path": "/customers/99"
 }
 ```
 
