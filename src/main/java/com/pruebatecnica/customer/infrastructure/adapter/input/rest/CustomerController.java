@@ -1,12 +1,12 @@
 package com.pruebatecnica.customer.infrastructure.adapter.input.rest;
 
-import com.pruebatecnica.customer.application.exception.CustomerNotFoundException;
 import com.pruebatecnica.customer.application.port.input.CreateCustomerUseCase;
 import com.pruebatecnica.customer.application.port.input.GetCustomerUseCase;
 import com.pruebatecnica.customer.application.port.input.ListCustomersUseCase;
 import com.pruebatecnica.customer.infrastructure.adapter.input.rest.dto.CreateCustomerRequest;
 import com.pruebatecnica.customer.infrastructure.adapter.input.rest.dto.CustomerResponse;
 import com.pruebatecnica.customer.infrastructure.adapter.input.rest.mapper.CustomerMapper;
+import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/customers")
+@RequestMapping("/customers")
 public class CustomerController {
 
     private final CreateCustomerUseCase createCustomerUseCase;
@@ -37,20 +37,16 @@ public class CustomerController {
     }
 
     @PostMapping
-    public ResponseEntity<CustomerResponse> create(@RequestBody CreateCustomerRequest request) {
+    public ResponseEntity<CustomerResponse> create(@Valid @RequestBody CreateCustomerRequest request) {
         var customer = createCustomerUseCase.create(customerMapper.toDomain(request));
         var response = customerMapper.toResponse(customer);
-        return ResponseEntity.created(URI.create("/api/v1/customers/" + customer.id())).body(response);
+        return ResponseEntity.created(URI.create("/customers/" + customer.id())).body(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<CustomerResponse> getById(@PathVariable Long id) {
-        try {
-            var customer = getCustomerUseCase.getById(id);
-            return ResponseEntity.ok(customerMapper.toResponse(customer));
-        } catch (CustomerNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        var customer = getCustomerUseCase.getById(id);
+        return ResponseEntity.ok(customerMapper.toResponse(customer));
     }
 
     @GetMapping
