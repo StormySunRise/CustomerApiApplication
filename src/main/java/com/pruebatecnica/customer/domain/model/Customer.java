@@ -5,21 +5,14 @@ import java.util.Locale;
 public record Customer(Long id, String name, String email) {
 
     public Customer {
-        if (name == null) {
-            throw new IllegalArgumentException("Name must not be null");
-        }
-        name = name.strip();
-        if (name.isEmpty()) {
-            throw new IllegalArgumentException("Name must not be empty");
-        }
+        name = requireNonBlank(name, "Name");
+        email = requireNonBlank(email, "Email").toLowerCase(Locale.ROOT);
+    }
 
-        if (email == null) {
-            throw new IllegalArgumentException("Email must not be null");
-        }
-        email = email.strip().toLowerCase(Locale.ROOT);
-        if (email.isEmpty()) {
-            throw new IllegalArgumentException("Email must not be empty");
-        }
+    private static String requireNonBlank(String value, String field) {
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException(field + " must not be null or blank");
+        return value.strip();
     }
 
     public Customer withId(Long id) {
