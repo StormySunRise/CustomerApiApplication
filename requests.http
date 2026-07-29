@@ -1,0 +1,64 @@
+### Base URL
+@baseUrl = http://localhost:8080
+
+### -------------------------------------------------------------------
+### Create a customer
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{
+  "name": "Juan Perez",
+  "email": "juan@email.com"
+}
+
+### -------------------------------------------------------------------
+### Get customer by ID (replace {id} with the ID returned above)
+GET {{baseUrl}}/customers/1
+
+### -------------------------------------------------------------------
+### List all customers
+GET {{baseUrl}}/customers
+
+### -------------------------------------------------------------------
+### Duplicate email (returns 409 Conflict)
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{
+  "name": "Otro Cliente",
+  "email": "juan@email.com"
+}
+
+### -------------------------------------------------------------------
+### Empty name (returns 400 Bad Request)
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{
+  "name": "",
+  "email": "test@email.com"
+}
+
+### -------------------------------------------------------------------
+### Empty email (returns 400 Bad Request)
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{
+  "name": "Test",
+  "email": ""
+}
+
+### -------------------------------------------------------------------
+### Invalid email (returns 400 Bad Request)
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{
+  "name": "Test",
+  "email": "invalid-email"
+}
+
+### -------------------------------------------------------------------
+### Customer not found (returns 404 Not Found)
+GET {{baseUrl}}/customers/999
